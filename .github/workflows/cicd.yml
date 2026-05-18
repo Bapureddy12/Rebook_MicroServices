@@ -1,0 +1,239 @@
+name: ReBook Microservices CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+
+jobs:
+
+  # ═══════════════════════════════
+  # JOB 1 — BUILD & TEST ALL SERVICES
+  # ═══════════════════════════════
+  build-and-test:
+    name: Build & Test - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth-service
+          - book-service
+          - chat-service
+          - notification-service
+          - request-service
+          - api-gateway
+          - eureka-server
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          mvn clean package -DskipTests
+
+      - name: Test ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          mvn test -DskipTests
+
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-jar
+          path: ${{ matrix.service }}/target/*.jar
+          retention-days: 1
+
+  # ═══════════════════════════════
+  # JOB 2 — BUILD FRONTEND
+  # ═══════════════════════════════
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  # ═══════════════════════════════
+  # JOB 3 — DOCKER BUILD & PUSH
+  # ═══════════════════════════════
+  docker-build-push:
+    name: Docker - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: [ build-and-test, build-frontend ]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: auth-service
+            image: rebook-auth
+          - service: book-service
+            image: rebook-book
+          - service: chat-service
+            image: rebook-chat
+          - service: notification-service
+            image: rebook-notification
+          - service: request-service
+            image: rebook-request
+          - service: api-gateway
+            image: rebook-api-gateway
+          - service: eureka-server
+            image: rebook-eureka
+          - service: frontend
+            image: rebook-frontend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        if: matrix.service != 'frontend'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build JAR
+        if: matrix.service != 'frontend'
+        run: |
+          cd ${{ matrix.service }}
+          mvn clean package -DskipTests
+
+      - name: Setup Node.js
+        if: matrix.service == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build Frontend
+        if: matrix.service == 'frontend'
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & Push ${{ matrix.image }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ═══════════════════════════════
+  # JOB 4 — DEPLOY TO SERVER
+  # ═══════════════════════════════
+  deploy:
+    name: Deploy to Ubuntu Server
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting Deployment..."
+            cd ~/Rebook_MicroServices
+
+            echo "📥 Pulling latest code..."
+            git pull origin main
+
+            echo "🐳 Pulling latest Docker images..."
+            docker-compose pull
+
+            echo "🔄 Restarting services..."
+            docker-compose down
+            docker-compose up -d
+
+            echo "🧹 Cleaning up old images..."
+            docker system prune -f
+
+            echo "✅ Checking running containers..."
+            docker-compose ps
+
+            echo "🎉 Deployment Successful!"
+
+  # ═══════════════════════════════
+  # JOB 5 — NOTIFY STATUS
+  # ═══════════════════════════════
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "ReBook Deployment - ${{ job.status }}"
+          body: |
+            Deployment Status: ${{ job.status }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          to: jbapureddy12@gmail.com
+          from: GitHub Actions
