@@ -344,7 +344,7 @@ services:
       - rebook-network  
 
   tts:
-    image: lscr.io/linuxserver/piper:latest
+    image: lscr.io/linuxserver/piper:latest      
     container_name: rebook-tts
     restart: always
     environment:
