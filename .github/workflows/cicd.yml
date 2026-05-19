@@ -146,7 +146,7 @@ jobs:
         if: matrix.service == 'frontend'
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.19.0'
 
       - name: Build Frontend
         if: matrix.service == 'frontend'
