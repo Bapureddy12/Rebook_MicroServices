@@ -237,5 +237,5 @@ jobs:
             Commit: ${{ github.sha }}
             Author: ${{ github.actor }}
           to: jbapureddy12@gmail.com
-          from: GitHub Actions     
+          from: GitHub Actions        
 
