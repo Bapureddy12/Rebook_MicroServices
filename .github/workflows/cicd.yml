@@ -64,7 +64,7 @@ jobs:
   # JOB 2 — BUILD FRONTEND
   # ═══════════════════════════════
   build-frontend:
-    name: Build Frontend
+    name: Build Frontend  
     runs-on: ubuntu-latest
 
     steps:
