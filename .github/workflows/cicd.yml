@@ -125,7 +125,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 17     
         if: matrix.service != 'frontend'
         uses: actions/setup-java@v4         
         with:
@@ -237,4 +237,5 @@ jobs:
             Commit: ${{ github.sha }}
             Author: ${{ github.actor }}
           to: jbapureddy12@gmail.com
-          from: GitHub Actions
+          from: GitHub Actions     
+
