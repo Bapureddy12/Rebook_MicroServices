@@ -570,7 +570,7 @@ com.netflix.discovery.shared.transport.TransportException: Cannot execute reques
         at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
         at java.base/java.lang.Thread.run(Unknown Source)
 2026-03-17 19:09:22 - Request execution failed with message: I/O error on GET request for "http://172.31.34.239:8761/eureka/apps/": Connect to http://172.31.34.239:8761 [/172.31.34.239] failed: Connection refused
-2026-03-17 19:09:22 - Request execution failed with message: I/O error on PUT request for "http://172.31.34.239:8761/eureka/apps/RAG-SERVICE/2cf2562b9957:rag-service:8086": Connect to http://172.31.34.239:8761 [/172.31.34.239] failed: Connection refused
+2026-03-17 19:09:22 - Request execution failed with message: I/O error on PUT request for "http://172.31.34.239:8761/eureka/apps/RAG-SERVICE/2cf2562b9957:rag-service:8086": Connect to http://172.31.34.239:8761 [/172.31.34.239] failed: Connection refused      
 2026-03-17 19:09:22 - DiscoveryClient_RAG-SERVICE/2cf2562b9957:rag-service:8086 - was unable to send heartbeat!
 com.netflix.discovery.shared.transport.TransportException: Cannot execute request on any known server
         at com.netflix.discovery.shared.transport.decorator.RetryableEurekaHttpClient.execute(RetryableEurekaHttpClient.java:112)
