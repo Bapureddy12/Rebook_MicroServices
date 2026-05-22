@@ -1,0 +1,51 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+
+# Install Java
+- task: JavaToolInstaller@0
+  inputs:
+    versionSpec: '17'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
+
+# Build Auth Service
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'auth-service/pom.xml'
+    goals: 'clean package'
+
+# Build Book Service
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'book-service/pom.xml'
+    goals: 'clean package'
+
+# Build Chat Service
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'chat-service/pom.xml'
+    goals: 'clean package'
+
+# Build Frontend
+- script: |
+    cd frontend
+    npm install
+    npm run build
+  displayName: Frontend Build
+
+# Docker Build
+- script: |
+    docker build -t auth-service ./auth-service
+    docker build -t book-service ./book-service
+    docker build -t chat-service ./chat-service
+  displayName: Docker Build
