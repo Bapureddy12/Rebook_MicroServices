@@ -19,19 +19,19 @@ steps:
     jdkSourceOption: 'PreInstalled'
 
 # Build Auth Service
-- task: Maven@3
+- task: Maven@4
   inputs:
     mavenPomFile: 'auth-service/pom.xml'
     goals: 'clean package'
 
 # Build Book Service
-- task: Maven@3
+- task: Maven@4
   inputs:
     mavenPomFile: 'book-service/pom.xml'
     goals: 'clean package'
 
 # Build Chat Service
-- task: Maven@3
+- task: Maven@4
   inputs:
     mavenPomFile: 'chat-service/pom.xml'
     goals: 'clean package'
